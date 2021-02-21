@@ -2,13 +2,32 @@ import json
 import os
 import requests
 from typing import List
+from collections import namedtuple
+from dataclasses import dataclass
 from pyproj import Transformer
-
-from dtypes import Point, Feature
 
 # TODO: logging, better exception handling
 
 OS_API_KEY = os.environ.get('OS_API_KEY')
+
+
+# custom types
+
+Point = namedtuple('Point', ['x', 'y'])
+
+
+@dataclass
+class Feature:
+    name: str
+    distance: float
+    location: Point
+
+    def __lt__(self, other):
+        """Feature classes are sorted by distance"""
+        return self.distance < other.distance
+
+
+# functions
 
 
 def load_features_data(filepath: str) -> dict:
@@ -26,14 +45,18 @@ def load_features_data(filepath: str) -> dict:
 def get_point(query: str) -> Point:
     """
     use ordnance-surveys `OS Names API` to find the coordinated of a search
-    query returns as (easting, northing) in EPSG27700 projection
+    query (postcode) returns as (easting, northing) in EPSG27700 projection
+
+    TODO: i think the places api would be better for this but cant get access
     """
 
     maxresults = 1  # only want the closest match
+    local_type = 'Postcode'
 
     url = ('https://api.os.uk/search/names/v1/find?'
            f'query={query}'
            f'&maxresults={maxresults}'
+           f'&fq=local_type:{local_type}'
            f'&key={OS_API_KEY}'
            )
 
@@ -52,9 +75,25 @@ def _distance(p1: Point, p2: Point) -> float:
     return (x_2 + y_2)**0.5
 
 
+transformer = Transformer.from_crs("EPSG:27700", "EPSG:4326")
+
+
+def transform_points(features: List[Feature]) -> List[Feature]:
+    """
+    transform 'location' attribute in list of Features
+    from EPSG:27700 to EPSG:4326 projection
+    """
+
+    for i in features:
+        i.location = Point(*transformer.transform(*i.location))
+
+    return features
+
+
 def find_nearest(point: Point, targets: dict, n: int = 5) -> List[Feature]:
     """
-    return the nearest n targets to point
+    return the nearest n targets to point, with 'location' attributes converted
+    to lat/long
 
     Parameters
     ----------
@@ -75,19 +114,6 @@ def find_nearest(point: Point, targets: dict, n: int = 5) -> List[Feature]:
     distances = [Feature(k, _distance(v, point), v)
                  for k, v in targets.items()]
 
-    return sorted(distances)[:n]
+    top_n = sorted(distances)[:n]
 
-
-transformer = Transformer.from_crs("EPSG:27700", "EPSG:4326")
-
-
-def transform_points(features: List[Feature]) -> List[Feature]:
-    """
-    transform 'location' attribute in list of Features
-    from EPSG:27700 to EPSG:4326 projection
-    """
-
-    for i in features:
-        i.location = Point(*transformer.transform(*i.location))
-
-    return features
+    return transform_points(top_n)

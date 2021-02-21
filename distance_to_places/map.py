@@ -3,7 +3,7 @@ from folium.plugins import FloatImage
 import os
 import datetime
 from typing import List
-from dtypes import Feature
+from .utils import Feature
 
 
 OS_API_KEY = os.environ.get('OS_API_KEY')
