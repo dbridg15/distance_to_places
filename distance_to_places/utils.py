@@ -117,3 +117,22 @@ def find_nearest(point: Point, targets: dict, n: int = 5) -> List[Feature]:
     top_n = sorted(distances)[:n]
 
     return transform_points(top_n)
+
+
+def feature_to_table_item(feature: Feature) -> str:
+    """convert a feature to a table row in HTML"""
+    return ''.join([f'<td>{i}</td>' for i in
+                    (feature.name,
+                     f'{int(feature.distance)}m',
+                     f'{feature.location.x:.6f}, {feature.location.y:.6f}')])
+
+
+def table_from_features(features: List[Feature]) -> str:
+    """converts a list of features to a HTML table"""
+
+    headers = ''.join([f'<th>{c}</th>' for c in
+                       ('Station Name', 'Distance', 'Lat/Long')])
+
+    rows = [feature_to_table_item(f) for f in features]
+    body = ''.join(f'<tr>{i}</tr>' for i in [headers, *rows])
+    return f'<table>{body}</table>'
