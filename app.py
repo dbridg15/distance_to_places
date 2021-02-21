@@ -1,5 +1,4 @@
-from flask import Flask
-from flask import request, escape
+from flask import Flask, request, escape, render_template
 import os
 
 from distance_to_places import (load_features_data,
@@ -29,14 +28,7 @@ def index():
     else:
         table = ""
         m = ""
-    return (
-        """<form action="" method="get">
-                Enter Postcode: <input type="text" name="postcode">
-                <input type="submit" value="Show nearest train stations">
-            </form>"""
-        + table
-        + m
-    )
+    return render_template('index.html', table=table, m=m)
 
 def nearest_n_from_postcode(postcode, targets):
     point = get_point(postcode)
